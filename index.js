@@ -4,6 +4,7 @@ import './config/env.js';
 import './config/mongo.js'
 import productRoutes from './routes/product.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import galleryRoutes from './routes/gallery.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 
 const app = express();
@@ -17,6 +18,7 @@ app.use(cors())
 
 app.use('/api/products', productRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/gallery', galleryRoutes);
 
 app.get('/health', (req, res) => {
     res.status(200).json({
