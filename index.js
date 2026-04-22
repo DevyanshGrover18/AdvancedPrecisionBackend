@@ -19,6 +19,7 @@ app.use(cors())
 app.use('/api/products', productRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/gallery', galleryRoutes);
+app.use("/uploads", express.static("uploads"));
 
 app.get('/health', (req, res) => {
     res.status(200).json({

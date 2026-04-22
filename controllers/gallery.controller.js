@@ -1,27 +1,10 @@
-import { Readable } from 'node:stream';
-import cloudinary, { isCloudinaryConfigured } from '../config/cloudinary.js';
+import fs from 'fs';
+import path from 'path';
 import Gallery from '../models/gallery.model.js';
 import { AppError } from '../utils/appError.js';
 
-const uploadStream = (buffer, folder) =>
-    new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-            {
-                folder,
-                resource_type: 'image'
-            },
-            (error, result) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
+const BASE_URL = 'http://node.advanceprecisionmold.com/uploads/';
 
-                resolve(result);
-            }
-        );
-
-        Readable.from([buffer]).pipe(stream);
-    });
 
 const normalizeFiles = (req) => {
     if (Array.isArray(req.files) && req.files.length > 0) {
@@ -50,35 +33,29 @@ const normalizeFiles = (req) => {
 };
 
 export const uploadGalleryImages = async (req, res) => {
-    const files = normalizeFiles(req);
+  try {
+    let uploaded = [];
 
-    if (files.length === 0) {
-        throw new AppError('At least one image file is required', 400);
+    // single image
+    if (req.files?.image) {
+      const file = req.files.image[0];
+      uploaded.push(BASE_URL + file.filename);
     }
 
-    if (!isCloudinaryConfigured) {
-        throw new AppError('Cloudinary is not configured', 500);
+    // multiple images
+    if (req.files?.images) {
+      const files = req.files.images.map((file) => BASE_URL + file.filename);
+      uploaded = [...uploaded, ...files];
     }
 
-    const uploadedImages = await Promise.all(
-        files.map(async (file) => {
-            const result = await uploadStream(file.buffer, 'gallery');
-
-            return Gallery.create({
-                imageUrl: result.secure_url,
-                publicId: result.public_id,
-                originalName: file.originalname,
-                uploadedBy: req.admin?._id || null
-            });
-        })
-    );
-
-    return res.status(201).json({
-        success: true,
-        message: 'Images uploaded successfully',
-        count: uploadedImages.length,
-        data: uploadedImages
+    return res.json({
+      success: true,
+      images: uploaded,
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Upload failed' });
+  }
 };
 
 export const getGalleryImages = async (req, res) => {
@@ -91,27 +68,28 @@ export const getGalleryImages = async (req, res) => {
     });
 };
 
+
+
 export const deleteGalleryImage = async (req, res) => {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    if (!isCloudinaryConfigured) {
-        throw new AppError('Cloudinary is not configured', 500);
-    }
+  const image = await Gallery.findById(id);
 
-    const image = await Gallery.findById(id);
+  if (!image) {
+    throw new AppError("Gallery image not found", 404);
+  }
 
-    if (!image) {
-        throw new AppError('Gallery image not found', 404);
-    }
+  // 🔥 delete from disk
+  const filePath = path.join("uploads", image.url.split("/uploads/")[1]);
 
-    await cloudinary.uploader.destroy(image.publicId, {
-        resource_type: 'image'
-    });
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
 
-    await image.deleteOne();
+  await image.deleteOne();
 
-    return res.status(200).json({
-        success: true,
-        message: 'Gallery image deleted successfully'
-    });
+  return res.status(200).json({
+    success: true,
+    message: "Gallery image deleted successfully",
+  });
 };

@@ -1,23 +1,28 @@
-import multer from 'multer';
-import { AppError } from '../utils/appError.js';
+import multer from "multer";
+import path from "path";
 
-const storage = multer.memoryStorage();
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // must exist on cPanel
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const name = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, name + ext);
+  },
+});
 
 const fileFilter = (req, file, cb) => {
-    if (file.mimetype && file.mimetype.startsWith('image/')) {
-        cb(null, true);
-        return;
-    }
-
-    cb(new AppError('Only image files are allowed', 400), false);
+  if (!file.mimetype.startsWith("image/")) {
+    return cb(new Error("Only images allowed"), false);
+  }
+  cb(null, true);
 };
 
 const upload = multer({
-    storage,
-    fileFilter,
-    limits: {
-        fileSize: 5 * 1024 * 1024
-    }
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter,
 });
 
 export default upload;
