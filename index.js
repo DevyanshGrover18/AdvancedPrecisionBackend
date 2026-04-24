@@ -10,11 +10,24 @@ import { errorHandler } from './middleware/error.middleware.js';
 const app = express();
 const PORT = 8000;
 
+const allowedOrigins = [
+  "https://advanced-precision.vercel.app",
+  /^http:\/\/localhost(:\d+)?$/,
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const isAllowed = allowedOrigins.some((pattern) =>
+      pattern instanceof RegExp ? pattern.test(origin) : pattern === origin
+    );
+    isAllowed ? callback(null, true) : callback(new Error(`CORS blocked: ${origin}`));
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors())
-
-
 
 app.use('/api/products', productRoutes);
 app.use('/api/admin', adminRoutes);
