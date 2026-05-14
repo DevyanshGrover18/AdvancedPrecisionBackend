@@ -12,6 +12,7 @@ const PORT = 8000;
 
 const allowedOrigins = [
   "https://advanced-precision.vercel.app",
+  "https://advanceprecisionmold.com",
   /^http:\/\/localhost(:\d+)?$/,
 ];
 
